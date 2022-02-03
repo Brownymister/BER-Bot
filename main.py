@@ -1,5 +1,5 @@
 import tweepy
-from scrape import Scrape
+from src.scrape import Scrape
 import schedule
 import time
 from auth import (consumer_key, consumer_secret,
@@ -28,22 +28,38 @@ def tweet() -> None:
 def generate_tweet_qoute(scrape) -> str:
     msg = """------------@BERAirport_Bot at """+get_date()+"""------------
         total aircraft at BER: """+str(scrape.get_allfligth_len())+"""
-        currantly arriving and departing aircraft: 
+        currantly arriving aircraft: 
         -----------------------------------------
             """
-    if len(scrape.currantly_landing_or_take_off) == 0:
+    if len(scrape.currantly_landing) == 0:
         msg += """---
         """
     else:
-        for i in range(len(scrape.currantly_landing_or_take_off)):
-            msg += str(i+1)+""". callsign: """ + str(scrape.currantly_landing_or_take_off[i]['callsign']) + """ 
-            origin country: """+str(scrape.currantly_landing_or_take_off[i]['origin_country'])+""" 
-            altitude: """+str(scrape.currantly_landing_or_take_off[i]['altitude'])+"m"
+        for i in range(len(scrape.currantly_landing)):
+            msg += str(i+1)+""". callsign: """ + str(scrape.currantly_landing[i]['callsign']) + """ 
+            origin country: """+str(scrape.currantly_landing[i]['origin_country'])+""" 
+            altitude: """+str(scrape.currantly_landing[i]['altitude'])+"m"
             msg += """  
             -----------------------------------------
             """
     msg += """
-        already landed aircraft:
+        currantly departing aircraft:
+        -----------------------------------------
+            """
+
+    if len(scrape.currantly_take_off) == 0:
+        msg += """---
+        """
+    else:
+        for i in range(len(scrape.currantly_take_off)):
+            msg += str(i+1)+""". callsign: """ + str(scrape.currantly_take_off[i]['callsign']) + """ 
+            origin country: """+str(scrape.currantly_take_off[i]['origin_country'])+""" 
+            altitude: """+str(scrape.currantly_take_off[i]['altitude'])+"m"
+            msg += """  
+            -----------------------------------------
+            """
+    msg += """
+        allready landed (boarding):
         -----------------------------------------
             """
 
@@ -63,7 +79,7 @@ def generate_tweet_qoute(scrape) -> str:
 
 def getnerate_image(quote, all_fligth_len) -> str:
     x = 460
-    y = 100 * (all_fligth_len+1)
+    y = 100 * (all_fligth_len+2)
     img = Image.new('RGB', (x, y), color="white")
     d1 = ImageDraw.Draw(img)
     font = ImageFont.truetype('/Library/Fonts/Arial.ttf', 15)
