@@ -5,6 +5,7 @@ from auth import (
     password
 )
 
+
 class Scrape:
 
     def __init__(self) -> None:
@@ -24,7 +25,7 @@ class Scrape:
         for i in result:
             if len(i[1].replace(" ", "")) > 4 and i[1] != "":
                 self.all_flights.append(
-                    {"callsign": i[1].replace(" ", ""),"icao24":i[0], "origin_country": i[2], "altitude": i[13], "on_ground": i[8], "time_stamp": i[4]})
+                    {"callsign": i[1].replace(" ", ""), "icao24": i[0], "origin_country": i[2], "altitude": i[13], "on_ground": i[8], "time_stamp": i[4]})
         self.filter_allfligths()
 
     def filter_allfligths(self) -> None:
@@ -36,6 +37,7 @@ class Scrape:
 
     def get_allfligth_len(self) -> int:
         return len(self.all_flights)
+
 
 """
     latitude   longitude
