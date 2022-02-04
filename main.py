@@ -1,5 +1,5 @@
 import tweepy
-from src.scrape import Scrape
+from scrape import Scrape
 import schedule
 import time
 from auth import (consumer_key, consumer_secret,
@@ -14,7 +14,9 @@ def tweet() -> None:
     api = tweepy.API(auth)
 
     scrape = Scrape()
-    scrape.scrape_data()
+    scrape_data = scrape.scrape_data()
+    if scrape_data == False:
+        return
 
     msg = generate_tweet_qoute(scrape)
     print(msg)

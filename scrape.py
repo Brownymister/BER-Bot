@@ -17,12 +17,16 @@ class Scrape:
         self.already_landed = []
         pass
 
-    def scrape_data(self) -> None:
+    def scrape_data(self) -> bool:
         result = requests.get(url=self.url)
         result_json = json.loads(result.text)
-        self.set_allflight(result_json['states'])
+        if result_json['states'] != None:
+            self.set_allflight(result_json['states'])
+        else:
+            print("No aircraft found")
+            return False
 
-    def set_allflight(self, result, ) -> None:
+    def set_allflight(self, result) -> None:
         for i in result:
             if len(i[1].replace(" ", "")) > 4 and i[1] != "":
                 self.all_flights.append(
@@ -44,3 +48,6 @@ class Scrape:
 
     def get_allfligth_len(self) -> int:
         return len(self.all_flights)
+
+""" scrape = Scrape()
+scrape.scrape_data() """
