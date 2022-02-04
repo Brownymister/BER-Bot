@@ -4,6 +4,7 @@ import schedule
 import time
 from auth import (consumer_key, consumer_secret,
                   access_token, access_token_secret)
+from db.save_db import Evaluation
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
@@ -98,8 +99,11 @@ def get_date() -> str:
 
 
 if __name__ == "__main__":
+    evaluate = Evaluation
     tweet()
+    evaluate.save_in_db()
     schedule.every().hour.do(tweet)
+    schedule.every(10).minutes.do(evaluate.save_in_db)
 
     while 1:
         schedule.run_pending()

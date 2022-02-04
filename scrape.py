@@ -28,7 +28,7 @@ class Scrape:
 
     def set_allflight(self, result) -> None:
         for i in result:
-            if len(i[1].replace(" ", "")) > 4 and i[1] != "":
+            if len(i[1].replace(" ", "")) > 3 and i[1] != "":
                 self.all_flights.append(
                     {"callsign": i[1].replace(" ", ""), "icao24": i[0], "origin_country": i[2], "altitude": i[13], "on_ground": i[8], "time_stamp": i[4], "vertical_rate": i[11]})
         self.filter_allfligths()
@@ -48,6 +48,3 @@ class Scrape:
 
     def get_allfligth_len(self) -> int:
         return len(self.all_flights)
-
-""" scrape = Scrape()
-scrape.scrape_data() """
