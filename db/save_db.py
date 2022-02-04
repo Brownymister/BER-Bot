@@ -42,10 +42,9 @@ class Evaluation:
                 if self.icao24_exsists(i['icao24']) == False:
                     self.commit_to_db(i, mycursor,mydb)
             else:
-                self.commit_to_db(i, mycursor,mydb)       
-                    
-        self.last_request_data = scrape.all_flights
-
+                self.commit_to_db(i, mycursor,mydb) 
+        self.last_request_data = scrape.all_flights            
+        
     def commit_to_db(self, i, mycursor,mydb):
         time_stamp = i['time_stamp']
         icao24 = i['icao24']
@@ -57,7 +56,8 @@ class Evaluation:
             status = "depature"
         else:
             status = "arrival"
-        sql = f'INSERT INTO flights (timestamp, icao24, callsighn,status,origin_country, model) VALUES ({time_stamp}, "{icao24}", "{callsighn}", "{status}","{origin_country}")'
+        sql = f'INSERT INTO flights (timestamp, icao24, callsighn,status,origin_country) VALUES ({time_stamp}, "{icao24}", "{callsighn}", "{status}","{origin_country}")'
+        print(sql)
         mycursor.execute(sql)
         mydb.commit()
 
@@ -68,8 +68,3 @@ class Evaluation:
                 found = True
                 break
         return found
-
-evaluation = Evaluation()
-evaluation_data = evaluation.save_in_db()
-time.sleep(20)
-evaluation_data = evaluation.save_in_db()
