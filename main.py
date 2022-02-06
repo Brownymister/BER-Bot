@@ -104,6 +104,7 @@ if __name__ == "__main__":
     evaluate.save_in_db()
     schedule.every().hour.do(tweet)
     schedule.every(10).minutes.do(evaluate.save_in_db)
+    schedule.every(10).minutes.do(evaluate.evaluate)
 
     while 1:
         schedule.run_pending()
