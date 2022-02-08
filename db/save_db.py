@@ -1,4 +1,5 @@
-import os ,sys
+import os
+import sys
 p = os.path.abspath('.')
 sys.path.insert(1, p)
 from auth import (
@@ -14,6 +15,7 @@ from datetime import datetime
 import requests
 import json
 from bs4 import BeautifulSoup
+import csv
 
 """
 CREATE TABLE flights(id INT AUTO_INCREMENT PRIMARY KEY,
@@ -44,12 +46,12 @@ class Evaluation:
         for i in scrape.all_flights:
             if len(self.last_request_data) != 0:
                 if self.icao24_exsists(i['icao24']) == False:
-                    self.commit_to_db(i, mycursor,mydb)
+                    self.commit_to_db(i, mycursor, mydb)
             else:
-                self.commit_to_db(i, mycursor,mydb) 
-        self.last_request_data = scrape.all_flights            
-        
-    def commit_to_db(self, i, mycursor,mydb) -> None:
+                self.commit_to_db(i, mycursor, mydb)
+        self.last_request_data = scrape.all_flights
+
+    def commit_to_db(self, i, mycursor, mydb) -> None:
         time_stamp = i['time_stamp']
         icao24 = i['icao24']
         callsighn = i['callsign']
@@ -65,7 +67,7 @@ class Evaluation:
         mycursor.execute(sql)
         mydb.commit()
 
-    def icao24_exsists(self,icao) -> bool:
+    def icao24_exsists(self, icao) -> bool:
         found = False
         for i in self.last_request_data:
             if i['icao24'] == icao:
@@ -82,22 +84,26 @@ class Evaluation:
         )
         mycursor = mydb.cursor()
         mycursor = mydb.cursor()
-        sql = "SELECT * FROM flights WHERE timestamp < "+str(int(datetime.now().timestamp())-(24*60*60))+" & arrivalAirport IS NULL;"
+        sql = "SELECT * FROM flights WHERE timestamp < " + \
+            str(int(datetime.now().timestamp())-(24*60*60)) + \
+            " & arrivalAirport IS NULL;"
         print(sql)
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         for i in myresult:
-            begin_date = (i[1]- 24 * 60 * 60)
+            begin_date = (i[1] - 24 * 60 * 60)
             end_date = str(int(datetime.now().timestamp()))
-            url = f"https://opensky-network.org/api/flights/aircraft?icao24={i[2]}&begin={begin_date}&end={end_date}" 
+            url = f"https://opensky-network.org/api/flights/aircraft?icao24={i[2]}&begin={begin_date}&end={end_date}"
             print(url)
             result = requests.get(url)
             result_json = json.loads(result.text)
             for a in result_json:
-                if a['callsign'].replace(" ", "") == i[3] and a['firstSeen'] >  (i[1]- 60 * 60) and a['firstSeen'] < (i[1]+ 60 * 60):
+                if a['callsign'].replace(" ", "") == i[3] and a['firstSeen'] > (i[1] - 60 * 60) and a['firstSeen'] < (i[1] + 60 * 60):
                     if a['estDepartureAirport'] == "EDDB" or a['estArrivalAirport'] == "EDDB":
-                        departure_airport = self.translate_icao(a['estDepartureAirport'])
-                        arrival_airport = self.translate_icao(a['estArrivalAirport'])
+                        departure_airport = self.translate_icao(
+                            a['estDepartureAirport'])
+                        arrival_airport = self.translate_icao(
+                            a['estArrivalAirport'])
                         print(departure_airport)
                         print(arrival_airport)
                         sql = f'UPDATE flights SET depatureAirport = "{departure_airport}", arrivalAirport = "{arrival_airport}" WHERE id = "{i[0]}"'
@@ -106,28 +112,27 @@ class Evaluation:
                         mydb.commit()
 
     def translate_icao(self, icao) -> str:
-        url = "https://www.flughafendetails.de/fluginfo/flughafencodes-europaeischer-flughaefen/"
+        url = "https://en.wikipedia.org/wiki/List_of_airports_by_ICAO_code:_E"
         page = requests.get(url)
         soup = BeautifulSoup(page.content, 'html.parser')
 
         if icao == None:
             return "unknown"
         result = icao
-        allInfection = soup.find('tbody')
-        lines = allInfection.find_all('tr')
+        lines = soup.find_all('li')
         for line in lines:
             if icao in line.text:
-                elements = line.find_all('td')
-                result = elements[2].text +" - "+ elements[0].text
+                code = line.text.split("(")
+                if len(code) > 1:
+                    code = code[1].split(")")
+                    result = code[0] + code[1]
+                else:
+                    result = code[0]
                 break
         return result
 
-    def calculate_distance(self, airport_code):
+    def calculate_distance(self, airport_code,db_id):
         """52.369850, 13.500286 - BER coordinates"""
-
-        distace_in_km_by_coordinates(52.369850, 13.500286)
-
-    def get_most_dearture_airports(self) -> None:
         mydb = mysql.connector.connect(
             host=db_host,
             user=db_user,
@@ -136,25 +141,101 @@ class Evaluation:
         )
         mycursor = mydb.cursor()
         mycursor = mydb.cursor()
-        sql = "SELECT arrivalAirport FROM flights;"
+
+        lines = []
+
+        with open('./airports.csv', 'r') as readFile:
+            reader = csv.reader(readFile, quotechar='/')
+            for row in reader:
+                lines.append(row)
+                for field in row:
+                    if 'Date' in field:
+                        lines.remove(row)
+
+        with open('./airports.csv', 'w') as writeFile:
+            writer = csv.writer(writeFile, quotechar='/')
+            writer.writerows(lines)
+        with open('./airports.csv', 'r') as csv_file:
+            reader = csv.reader(csv_file, delimiter=',')
+            for line in reader:
+                if airport_code in line[0]:
+                    # line = list(set(line))
+                    airport_coordinates = line[5].replace("POINT (", "")
+                    airport_coordinates = airport_coordinates.replace(")", "")
+                    airport_coordinates = airport_coordinates.split(" ")
+                    distance = distace_in_km_by_coordinates(52.369850, 13.500286, airport_coordinates[0], airport_coordinates[1])
+                    sql = f'UPDATE flights SET distance = "{distance}" WHERE id = "{db_id}"'
+                    print(sql)
+                    mycursor.execute(sql)
+                    mydb.commit()
+                    break
+
+    def get_most_airports(self, airport) -> None:
+        mydb = mysql.connector.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db
+        )
+        mycursor = mydb.cursor()
+        mycursor = mydb.cursor()
+        sql = f"SELECT {airport} FROM flights;"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
 
         results = {}
+        if myresult != None:
+            for i in myresult:
+                i = str(i).replace("('", "").replace("',)", "")
+                if i != "BER - Berlin Brandenburg Airport":
+                    if i not in results:
+                        results.update({str(i): 1})
+                    else:
+                        results[i] += 1
+            results = sorted(results.items(), key=lambda x: x[1], reverse=True)
+            print(airport)
+            print(results)
 
+    def get_total_distance(self):
+        mydb = mysql.connector.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db
+        )
+        mycursor = mydb.cursor()
+        mycursor = mydb.cursor()
+        sql = f"SELECT distance FROM flights;"
+        mycursor.execute(sql)
+        myresult = mycursor.fetchall()
+        result = 0
         for i in myresult:
-            i = str(i).replace("('", "").replace("',)", "")
-            if i != "BER - Berlin Brandenburg Airport":
-                if i not in results:
-                    results.update({str(i):1})
-                else:
-                    results[i] += 1
-        results = sorted(results.items(), key=lambda x: x[1], reverse=True)
-        print(results)
-
-
+            i = list(i)
+            if i[0] != None:
+                result += float(i[0])
+        print(str(result)+" km")
 
 evaluate = Evaluation()
-""" print(evaluate.translate_icao("EDDB")) """
-""" evaluate.get_most_dearture_airports() """
-evaluate.evaluate()
+evaluate.get_total_distance()
+""" mydb = mysql.connector.connect(
+    host=db_host,
+    user=db_user,
+    password=db_password,
+    database=db
+)
+mycursor = mydb.cursor()
+mycursor = mydb.cursor()
+sql = f"SELECT * FROM flights;"
+mycursor.execute(sql)
+myresult = mycursor.fetchall()
+for i in myresult:
+    if i[4] != None and i[5] != None:
+        code_a = i[4].split("-")
+        code_a = code_a[0].replace(" ", "")
+        code_d = i[5].split("-")
+        code_d = code_d[0].replace(" ", "")
+        if code_a != "BER":
+            result = evaluate.calculate_distance(code_a, i[0])
+        else:
+            result = evaluate.calculate_distance(code_d, i[0])
+        print(result) """
